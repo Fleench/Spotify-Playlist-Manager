@@ -107,6 +107,72 @@ namespace Spotify_Playlist_Manager.Models
         }
 
         /// <summary>
+        /// Writes a boolean settings value.
+        /// </summary>
+        public static Task SetSettingBoolAsync(string key, bool value)
+        {
+            return SetSettingAsync(key, value ? bool.TrueString : bool.FalseString);
+        }
+
+        /// <summary>
+        /// Reads a boolean settings value or falls back to a default.
+        /// </summary>
+        public static bool GetSettingBool(string key, bool defaultValue = false)
+        {
+            string? rawValue = GetSetting(key);
+            return bool.TryParse(rawValue, out bool parsedValue) ? parsedValue : defaultValue;
+        }
+
+        /// <summary>
+        /// Stores the request to purge cached data inside Settings.
+        /// </summary>
+        public static Task SetPurgeDataRequestedAsync(bool shouldPurge)
+        {
+            return SetSettingBoolAsync(Variables.Settings.Data_PurgeRequested, shouldPurge);
+        }
+
+        /// <summary>
+        /// Gets whether the user has requested a purge of local cached data.
+        /// </summary>
+        public static bool GetPurgeDataRequested(bool defaultValue = false)
+        {
+            return GetSettingBool(Variables.Settings.Data_PurgeRequested, defaultValue);
+        }
+
+        /// <summary>
+        /// Resolves the settings key associated with a synchronization feature.
+        /// </summary>
+        public static string GetSyncFeatureKey(SyncEntryPoint feature)
+        {
+            return feature switch
+            {
+                SyncEntryPoint.Playlists => Variables.Settings.Feature_SyncPlaylists,
+                SyncEntryPoint.Albums => Variables.Settings.Feature_SyncAlbums,
+                SyncEntryPoint.LikedSongs => Variables.Settings.Feature_SyncLikedSongs,
+                SyncEntryPoint.TrackMetadata => Variables.Settings.Feature_SyncTrackMetadata,
+                SyncEntryPoint.AlbumMetadata => Variables.Settings.Feature_SyncAlbumMetadata,
+                SyncEntryPoint.ArtistMetadata => Variables.Settings.Feature_SyncArtistMetadata,
+                _ => throw new ArgumentOutOfRangeException(nameof(feature), feature, "Unknown synchronization feature."),
+            };
+        }
+
+        /// <summary>
+        /// Sets the enabled state for a synchronization feature.
+        /// </summary>
+        public static Task SetSyncFeatureEnabledAsync(SyncEntryPoint feature, bool isEnabled)
+        {
+            return SetSettingBoolAsync(GetSyncFeatureKey(feature), isEnabled);
+        }
+
+        /// <summary>
+        /// Gets the enabled state for a synchronization feature.
+        /// </summary>
+        public static bool GetSyncFeatureEnabled(SyncEntryPoint feature, bool defaultValue = true)
+        {
+            return GetSettingBool(GetSyncFeatureKey(feature), defaultValue);
+        }
+
+        /// <summary>
         /// Adds or updates a playlist, caching its artwork when necessary.
         /// </summary>
         public static async Task SetPlaylistAsync(Variables.PlayList playlist)
@@ -369,7 +435,7 @@ namespace Spotify_Playlist_Manager.Models
         /// <summary>
         /// Retrieves a potential similarity entry.
         /// </summary>
-        public static (string SongId, string SongId2)? GetMightBeSimilar(string songId, string songId2)
+        public static (string SongId, string SongId2, int? Rating)? GetMightBeSimilar(string songId, string songId2)
         {
             EnsureValidSongIdentifier(songId, nameof(songId));
             EnsureValidSongIdentifier(songId2, nameof(songId2));
@@ -380,9 +446,29 @@ namespace Spotify_Playlist_Manager.Models
         /// <summary>
         /// Enumerates all potential similarity entries.
         /// </summary>
-        public static IEnumerable<(string SongId, string SongId2)> GetAllMightBeSimilar()
+        public static IEnumerable<(string SongId, string SongId2, int? Rating)> GetAllMightBeSimilar()
         {
             return DatabaseWorker.GetAllMightBeSimilar();
+        }
+
+        /// <summary>
+        /// Enumerates only unresolved potential similarity entries that do not yet
+        /// have a rating assigned.
+        /// </summary>
+        public static IEnumerable<(string SongId, string SongId2, int? Rating)> GetUnratedMightBeSimilar()
+        {
+            return DatabaseWorker.GetUnratedMightBeSimilar();
+        }
+
+        /// <summary>
+        /// Assigns or clears a user rating for a potential similarity entry.
+        /// </summary>
+        public static async Task SetMightBeSimilarRatingAsync(string songId, string songId2, int? rating)
+        {
+            EnsureValidSongIdentifier(songId, nameof(songId));
+            EnsureValidSongIdentifier(songId2, nameof(songId2));
+
+            await DatabaseWorker.SetMightBeSimilarRating(songId, songId2, rating);
         }
 
         /// <summary>
@@ -918,4 +1004,3 @@ namespace Spotify_Playlist_Manager.Models
         }
     }
 }
-
