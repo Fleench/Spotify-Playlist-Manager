@@ -237,6 +237,14 @@ namespace Spotify_Playlist_Manager.Models
             public static string SW_RefreshToken = "SW_RefreshToken";
             public static string SW_ClientToken = "SW_ClientToken";
             public static string SW_ClientSecret = "SW_ClientSecret";
+            public static string Review_UnratedOnly = "Review_UnratedOnly";
+            public static string Data_PurgeRequested = "Data_PurgeRequested";
+            public static string Feature_SyncPlaylists = "Feature_SyncPlaylists";
+            public static string Feature_SyncAlbums = "Feature_SyncAlbums";
+            public static string Feature_SyncLikedSongs = "Feature_SyncLikedSongs";
+            public static string Feature_SyncTrackMetadata = "Feature_SyncTrackMetadata";
+            public static string Feature_SyncAlbumMetadata = "Feature_SyncAlbumMetadata";
+            public static string Feature_SyncArtistMetadata = "Feature_SyncArtistMetadata";
         }
 
         public static string MakeId( string type = "SNG", int length = 30)

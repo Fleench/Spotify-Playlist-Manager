@@ -95,7 +95,8 @@ namespace Spotify_Playlist_Manager.Models
                                   -- MightBeSimilar table
                                   CREATE TABLE IF NOT EXISTS MightBeSimilar (
                                       SongID TEXT,                       -- Primary track ID
-                                      SongID2 TEXT                       -- Candidate similar track ID
+                                      SongID2 TEXT,                      -- Candidate similar track ID
+                                      Rating INTEGER                     -- Nullable review rating
                                   );
                               """;
 
@@ -106,6 +107,7 @@ namespace Spotify_Playlist_Manager.Models
             EnsureColumnExists(conn, "Albums", "ImagePath");
             EnsureColumnExists(conn, "Artists", "ImagePath");
             EnsureColumnExists(conn, "Similar", "Type");
+            EnsureColumnExists(conn, "MightBeSimilar", "Rating");
         }
 
 
@@ -877,13 +879,13 @@ namespace Spotify_Playlist_Manager.Models
         /// <summary>
         /// Retrieves a potential match pair when it exists.
         /// </summary>
-        public static (string SongId, string SongId2)? GetMightBeSimilar(string songId, string songId2)
+        public static (string SongId, string SongId2, int? Rating)? GetMightBeSimilar(string songId, string songId2)
         {
             using var conn = new SqliteConnection($"Data Source={_dbPath}");
             conn.Open();
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT SongID, SongID2 FROM MightBeSimilar WHERE SongID = $songId AND SongID2 = $songId2 LIMIT 1;";
+            cmd.CommandText = "SELECT SongID, SongID2, Rating FROM MightBeSimilar WHERE SongID = $songId AND SongID2 = $songId2 LIMIT 1;";
             cmd.Parameters.AddWithValue("$songId", songId);
             cmd.Parameters.AddWithValue("$songId2", songId2);
 
@@ -893,7 +895,8 @@ namespace Spotify_Playlist_Manager.Models
             {
                 return (
                     reader["SongID"]?.ToString() ?? string.Empty,
-                    reader["SongID2"]?.ToString() ?? string.Empty
+                    reader["SongID2"]?.ToString() ?? string.Empty,
+                    reader["Rating"] == DBNull.Value ? null : Convert.ToInt32(reader["Rating"])
                 );
             }
 
@@ -903,13 +906,13 @@ namespace Spotify_Playlist_Manager.Models
         /// <summary>
         /// Enumerates all potential match pairs still awaiting user confirmation.
         /// </summary>
-        public static IEnumerable<(string SongId, string SongId2)> GetAllMightBeSimilar()
+        public static IEnumerable<(string SongId, string SongId2, int? Rating)> GetAllMightBeSimilar()
         {
             using var conn = new SqliteConnection($"Data Source={_dbPath}");
             conn.Open();
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT SongID, SongID2 FROM MightBeSimilar;";
+            cmd.CommandText = "SELECT SongID, SongID2, Rating FROM MightBeSimilar;";
 
             using var reader = cmd.ExecuteReader();
 
@@ -917,8 +920,57 @@ namespace Spotify_Playlist_Manager.Models
             {
                 yield return (
                     reader["SongID"]?.ToString() ?? string.Empty,
-                    reader["SongID2"]?.ToString() ?? string.Empty
+                    reader["SongID2"]?.ToString() ?? string.Empty,
+                    reader["Rating"] == DBNull.Value ? null : Convert.ToInt32(reader["Rating"])
                 );
+            }
+        }
+
+        /// <summary>
+        /// Enumerates only the potential match pairs that still have no assigned rating.
+        /// </summary>
+        public static IEnumerable<(string SongId, string SongId2, int? Rating)> GetUnratedMightBeSimilar()
+        {
+            using var conn = new SqliteConnection($"Data Source={_dbPath}");
+            conn.Open();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT SongID, SongID2, Rating FROM MightBeSimilar WHERE Rating IS NULL;";
+
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                yield return (
+                    reader["SongID"]?.ToString() ?? string.Empty,
+                    reader["SongID2"]?.ToString() ?? string.Empty,
+                    null
+                );
+            }
+        }
+
+        /// <summary>
+        /// Assigns or clears a rating for a potential match.
+        /// </summary>
+        public static async Task SetMightBeSimilarRating(string songId, string songId2, int? rating)
+        {
+            await DbWriteLock.WaitAsync();
+            try
+            {
+                using var conn = new SqliteConnection($"Data Source={_dbPath}");
+                await conn.OpenAsync();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "UPDATE MightBeSimilar SET Rating = $rating WHERE SongID = $songId AND SongID2 = $songId2;";
+                cmd.Parameters.AddWithValue("$songId", songId);
+                cmd.Parameters.AddWithValue("$songId2", songId2);
+                cmd.Parameters.AddWithValue("$rating", rating.HasValue ? rating.Value : DBNull.Value);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                DbWriteLock.Release();
             }
         }
 
