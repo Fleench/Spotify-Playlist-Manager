@@ -1,0 +1,1 @@
+For any file you edit ensure that in the author field you add yourself as an author bu adding ChatGPT Codex to the author field. And any new .cs files made must have a programmer header formated like the others.
