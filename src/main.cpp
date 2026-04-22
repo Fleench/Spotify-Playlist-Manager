@@ -1,12 +1,15 @@
+#include <adwaita.h>
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <string>
+
 #include "Variables.hpp"
 #include "DatabaseWorker.hpp"
-#include "DataCoordinator.hpp"
 #include "SpotifyWorker.hpp"
+#include "DataCoordinator.hpp"
 #include "Helpers.hpp"
+#include "MainWindow.hpp"
 
 using namespace SpotifyPlaylistManager;
 
@@ -20,10 +23,7 @@ std::string stripQuotes(const std::string& s) {
 std::map<std::string, std::string> loadEnv(const std::string& filepath) {
     std::map<std::string, std::string> env;
     std::ifstream file(filepath);
-    if (!file.is_open()) {
-        std::cerr << "Could not open " << filepath << ". Please ensure it exists." << std::endl;
-        return env;
-    }
+    if (!file.is_open()) return env;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -41,10 +41,9 @@ std::map<std::string, std::string> loadEnv(const std::string& filepath) {
 
 int main(int argc, char** argv) {
     Variables::Init();
-    
-    // 1. Load keys from .env
+    DatabaseWorker::Init();
+
     auto env = loadEnv(".env");
-    
     std::string clientId = env["SPOTIFY_CLIENT_ID"];
     std::string clientSecret = env["SPOTIFY_CLIENT_SECRET"];
     std::string accessToken = env["SPOTIFY_ACCESS_TOKEN"];
@@ -55,10 +54,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // Initialize Database
-    DatabaseWorker::Init();
-
-    // Try loading tokens from database if they aren't fully provided by .env
     if (accessToken.empty() || accessToken == "your_access_token_here_optional") {
         auto dbAt = DataCoordinator::GetSetting(Variables::Settings::SW_AccessToken);
         if (dbAt) accessToken = dbAt.value();
@@ -69,10 +64,6 @@ int main(int argc, char** argv) {
         if (dbRt) refreshToken = dbRt.value();
     }
 
-    // 2. Init and Authenticate
-    std::cout << "Loaded Client ID: " << clientId.substr(0, 4) << "..." << std::endl;
-    std::cout << "Loaded Client Secret: " << clientSecret.substr(0, 4) << "..." << std::endl;
-    std::cout << "Initializing Spotify Worker..." << std::endl;
     SpotifyWorker::Init(clientId, clientSecret, accessToken, refreshToken);
     
     std::cout << "Authenticating..." << std::endl;
@@ -80,64 +71,21 @@ int main(int argc, char** argv) {
         auto [newAt, newRt] = SpotifyWorker::Authenticate();
         std::cout << "Authenticated successfully." << std::endl;
         
-        // Save back to DB
         DataCoordinator::SetSetting(Variables::Settings::SW_ClientToken, clientId);
         DataCoordinator::SetSetting(Variables::Settings::SW_ClientSecret, clientSecret);
         if (!newAt.empty()) DataCoordinator::SetSetting(Variables::Settings::SW_AccessToken, newAt);
         if (!newRt.empty()) DataCoordinator::SetSetting(Variables::Settings::SW_RefreshToken, newRt);
-        
     } catch (const std::exception& e) {
-        std::cerr << "Authentication failed with exception: " << e.what() << std::endl;
-        std::cerr << "Please ensure your Client ID and Client Secret are correct." << std::endl;
-        return 1;
-    } catch (...) {
-        std::cerr << "Authentication failed with an unknown error." << std::endl;
+        std::cerr << "Auth failed: " << e.what() << std::endl;
         return 1;
     }
 
-    // 3. Get first playlist
-    std::cout << "Fetching user playlists..." << std::endl;
-    auto playlists = SpotifyWorker::GetUserPlaylists();
-    
-    if (playlists.empty()) {
-        std::cout << "No playlists found for this user." << std::endl;
-        return 0;
-    }
+    // Launch GTK/Adwaita Application
+    AdwApplication* app = adw_application_new("com.example.SpotifyPlaylistManager", G_APPLICATION_DEFAULT_FLAGS);
+    g_signal_connect(app, "activate", G_CALLBACK(MainWindow::Activate), NULL);
 
-    auto firstPlaylistId = std::get<0>(playlists[0]);
-    auto firstPlaylistName = std::get<1>(playlists[0]);
-    auto firstPlaylistCount = std::get<2>(playlists[0]);
-    
-    std::cout << "Found First Playlist: " << firstPlaylistName 
-              << " (" << firstPlaylistCount << " tracks)" << std::endl;
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
 
-    // 4. Fetch playlist data (Track IDs)
-    std::cout << "Fetching playlist track IDs..." << std::endl;
-    auto [plName, plImg, plId, plDesc, plSnap, plTrackIds] = SpotifyWorker::GetPlaylistData(firstPlaylistId);
-
-    if (plTrackIds.empty()) {
-        std::cout << "Playlist is empty or track IDs could not be fetched." << std::endl;
-        return 0;
-    }
-
-    // 5. List songs
-    auto trackIds = Helpers::Split(plTrackIds, ";;");
-    std::cout << "\nSongs in Playlist:\n";
-    std::cout << "-------------------\n";
-    for (size_t i = 0; i < trackIds.size(); ++i) {
-        if (trackIds[i].empty()) continue;
-        
-        auto [sName, sId, sAlbumId, sArtistIds, sDisc, sDur, sExp, sPreview, sNum] = SpotifyWorker::GetSongData(trackIds[i]);
-        
-        if (sName.empty()) {
-            std::cout << (i+1) << ". [Failed to load track data for ID: " << trackIds[i] << "]\n";
-        } else {
-            std::cout << (i+1) << ". " << sName << "\n";
-        }
-    }
-    
-    std::cout << "-------------------\n";
-    std::cout << "Test completed successfully." << std::endl;
-
-    return 0;
+    return status;
 }

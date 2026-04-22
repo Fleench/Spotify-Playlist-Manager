@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="AdwApplicationWindow" id="main_window">
+    <property name="default-width">400</property>
+    <property name="default-height">300</property>
+    <property name="title">Spotify Playlist Manager</property>
+    <property name="content">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar"/>
+        </child>
+        <property name="content">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="valign">center</property>
+            <property name="halign">center</property>
+            <child>
+              <object class="GtkButton" id="sync_button">
+                <property name="label">Start Full Sync</property>
+                <property name="width-request">160</property>
+                <property name="height-request">45</property>
+                <style>
+                  <class name="suggested-action"/>
+                  <class name="pill"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </object>
+</interface>

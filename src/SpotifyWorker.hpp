@@ -204,6 +204,118 @@ public:
         }
     }
 
+    
+    static std::vector<std::tuple<std::string, std::string, std::string>> GetLikedSongs() {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string>> results;
+        try {
+            auto page = client->track().getUserSavedTracks();
+            for (const auto& item : page.items) {
+                std::string artistIds = "";
+                for (const auto& art : item.track.artists) {
+                    artistIds += art.id + ";;";
+                }
+                results.push_back({item.track.id, item.track.name, artistIds});
+            }
+        } catch (...) {}
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, int, std::string>> GetUserAlbums() {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, int, std::string>> results;
+        try {
+            auto page = client->album().getUsersSavedAlbums();
+            for (const auto& item : page.items) {
+                std::string artistIds = "";
+                for (const auto& art : item.album.artists) {
+                    artistIds += art.id + ";;";
+                }
+                results.emplace_back(item.album.id, item.album.name, item.album.total_tracks, artistIds);
+            }
+        } catch (...) {}
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>> GetPlaylistDataBatch(const std::vector<std::string>& ids) {
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>> results;
+        for (const auto& id : ids) {
+            auto data = GetPlaylistData(id);
+            if (!std::get<0>(data).empty()) {
+                results.push_back(data);
+            }
+        }
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> GetAlbumDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> results;
+        for (const auto& id : ids) {
+            auto data = GetAlbumData(id);
+            if (!std::get<0>(data).empty()) {
+                results.push_back(data);
+            }
+        }
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, int, int, bool, std::string, int>> GetSongDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, int, int, bool, std::string, int>> results;
+        
+        // Spotify API supports batching up to 50 tracks
+        for (size_t i = 0; i < ids.size(); i += 50) {
+            std::vector<std::string> chunk;
+            for (size_t j = i; j < i + 50 && j < ids.size(); j++) {
+                chunk.push_back(ids[j]);
+            }
+            try {
+                auto trackList = client->track().getTracks(chunk);
+                for (const auto& tr : trackList.tracks) {
+                    std::string artistIds = "";
+                    for (const auto& art : tr.artists) {
+                        artistIds += art.id + ";;";
+                    }
+                    results.push_back({tr.name, tr.id, tr.album.id, artistIds, tr.disc_number, tr.duration_ms, tr.is_explicit, tr.preview_url.value_or(""), tr.track_number});
+                }
+            } catch (...) {}
+        }
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string>> GetArtistDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> results;
+        
+        // Spotify API supports batching up to 50 artists
+        for (size_t i = 0; i < ids.size(); i += 50) {
+            std::vector<std::string> chunk;
+            for (size_t j = i; j < i + 50 && j < ids.size(); j++) {
+                chunk.push_back(ids[j]);
+            }
+            try {
+                auto artistList = client->artist().getMultipleArtists(chunk);
+                for (const auto& art : artistList.artists) {
+                    std::string imageUrl = art.images.empty() ? "" : art.images[0].url;
+                    std::string genres = "";
+                    for (const auto& g : art.genres) {
+                        genres += g + ";;";
+                    }
+                    
+                    std::string artId = art.uri;
+                    auto pos = artId.find_last_of(':');
+                    if (pos != std::string::npos) {
+                        artId = artId.substr(pos + 1);
+                    }
+
+                    results.emplace_back(artId, art.name, imageUrl, genres);
+                }
+            } catch (...) {}
+        }
+        return results;
+    }
+
     static void AddTracksToPlaylist(const std::string& playlistId, const std::vector<std::string>& trackIds) {
         if (!client) return;
         try {

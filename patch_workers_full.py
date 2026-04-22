@@ -1,86 +1,134 @@
-#ifndef DATA_COORDINATOR_HPP
-#define DATA_COORDINATOR_HPP
+import sys
 
-#include "Variables.hpp"
-#include "DatabaseWorker.hpp"
-#include "SpotifyWorker.hpp"
-#include "CacheWorker.hpp"
-#include "Helpers.hpp"
-#include <string>
-#include <vector>
-#include <optional>
+# 1. Update SpotifyWorker.hpp
+with open('src/SpotifyWorker.hpp', 'r') as f:
+    sw = f.read()
 
-namespace SpotifyPlaylistManager {
-
-class DataCoordinator {
-public:
-    // Settings
-    static void SetSetting(const std::string& key, const std::string& value) { DatabaseWorker::SetSetting(key, value); }
-    static void RemoveSetting(const std::string& key) { DatabaseWorker::RemoveSetting(key); }
-    static std::optional<std::string> GetSetting(const std::string& key) { return DatabaseWorker::GetSetting(key); }
-    static std::vector<std::pair<std::string, std::string>> GetAllSettings() { return DatabaseWorker::GetAllSettings(); }
-
-    // Playlists
-    static void SetPlaylist(Variables::PlayList playlist) {
-        auto imagePath = CacheWorker::GetImagePath(CacheWorker::ImageType::Playlist, playlist.Id);
-        if (!imagePath && !playlist.ImageURL.empty()) {
-            imagePath = CacheWorker::DownloadImage(playlist.ImageURL, CacheWorker::ImageType::Playlist, playlist.Id);
-        }
-        playlist.ImagePath = imagePath.value_or("");
-        DatabaseWorker::SetPlaylist(playlist);
+# Add missing backend methods to SpotifyWorker
+new_methods = """
+    static std::vector<std::tuple<std::string, std::string, std::string>> GetLikedSongs() {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string>> results;
+        try {
+            auto page = client->track().getUserSavedTracks();
+            for (const auto& item : page.items) {
+                std::string artistIds = "";
+                for (const auto& art : item.track.artists) {
+                    artistIds += art.id + ";;";
+                }
+                results.push_back({item.track.id, item.track.name, artistIds});
+            }
+        } catch (...) {}
+        return results;
     }
-    static void RemovePlaylist(const std::string& id) { DatabaseWorker::RemovePlaylist(id); }
-    static std::optional<Variables::PlayList> GetPlaylist(const std::string& id) { return DatabaseWorker::GetPlaylist(id); }
-    static std::vector<Variables::PlayList> GetAllPlaylists() { return DatabaseWorker::GetAllPlaylists(); }
 
-    // Albums
-    static void SetAlbum(Variables::Album album) {
-        auto imagePath = CacheWorker::GetImagePath(CacheWorker::ImageType::Album, album.Id);
-        if (!imagePath && !album.ImageURL.empty()) {
-            imagePath = CacheWorker::DownloadImage(album.ImageURL, CacheWorker::ImageType::Album, album.Id);
-        }
-        album.ImagePath = imagePath.value_or("");
-        DatabaseWorker::SetAlbum(album);
+    static std::vector<std::tuple<std::string, std::string, int, std::string>> GetUserAlbums() {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, int, std::string>> results;
+        try {
+            auto page = client->album().getSavedAlbums();
+            for (const auto& item : page.items) {
+                std::string artistIds = "";
+                for (const auto& art : item.album.artists) {
+                    artistIds += art.id + ";;";
+                }
+                results.push_back({item.album.id, item.album.name, item.album.total_tracks, artistIds});
+            }
+        } catch (...) {}
+        return results;
     }
-    static void RemoveAlbum(const std::string& id) { DatabaseWorker::RemoveAlbum(id); }
-    static std::optional<Variables::Album> GetAlbum(const std::string& id) { return DatabaseWorker::GetAlbum(id); }
-    static std::vector<Variables::Album> GetAllAlbums() { return DatabaseWorker::GetAllAlbums(); }
 
-    // Tracks
-    static void SetTrack(Variables::Track track) {
-        if (track.SongID.empty()) {
-            track.SongID = Variables::MakeId();
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>> GetPlaylistDataBatch(const std::vector<std::string>& ids) {
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>> results;
+        for (const auto& id : ids) {
+            auto data = GetPlaylistData(id);
+            if (!std::get<0>(data).empty()) {
+                results.push_back(data);
+            }
         }
-        DatabaseWorker::SetTrack(track);
+        return results;
     }
-    static void RemoveTrack(const std::string& id) { DatabaseWorker::RemoveTrack(id); }
-    static std::optional<Variables::Track> GetTrack(const std::string& id) { return DatabaseWorker::GetTrack(id); }
-    static std::vector<Variables::Track> GetAllTracks() { return DatabaseWorker::GetAllTracks(); }
-    static int GetTrackCountBySongId(const std::string& songId) { return DatabaseWorker::GetTrackCountBySongId(songId); }
 
-    // Artists
-    static void SetArtist(Variables::Artist artist) {
-        auto imagePath = CacheWorker::GetImagePath(CacheWorker::ImageType::Artist, artist.Id);
-        if (!imagePath && !artist.ImageURL.empty()) {
-            imagePath = CacheWorker::DownloadImage(artist.ImageURL, CacheWorker::ImageType::Artist, artist.Id);
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> GetAlbumDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> results;
+        for (const auto& id : ids) {
+            auto data = GetAlbumData(id);
+            if (!std::get<0>(data).empty()) {
+                results.push_back(data);
+            }
         }
-        artist.ImagePath = imagePath.value_or("");
-        DatabaseWorker::SetArtist(artist);
+        return results;
     }
-    static void RemoveArtist(const std::string& id) { DatabaseWorker::RemoveArtist(id); }
-    static std::optional<Variables::Artist> GetArtist(const std::string& id) { return DatabaseWorker::GetArtist(id); }
-    static std::vector<Variables::Artist> GetAllArtists() { return DatabaseWorker::GetAllArtists(); }
 
-    // Similar
-    static void SetSimilar(const std::string& songId1, const std::string& songId2, const std::string& type) { DatabaseWorker::SetSimilar(songId1, songId2, type); }
-    static void RemoveSimilar(const std::string& songId1, const std::string& songId2, const std::string& type) { DatabaseWorker::RemoveSimilar(songId1, songId2, type); }
-    static std::vector<std::tuple<std::string, std::string, std::string>> GetAllSimilar() { return DatabaseWorker::GetAllSimilar(); }
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string, int, int, bool, std::string, int>> GetSongDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, int, int, bool, std::string, int>> results;
+        
+        // Spotify API supports batching up to 50 tracks
+        for (size_t i = 0; i < ids.size(); i += 50) {
+            std::vector<std::string> chunk;
+            for (size_t j = i; j < i + 50 && j < ids.size(); j++) {
+                chunk.push_back(ids[j]);
+            }
+            try {
+                auto trackList = client->track().getTracks(chunk);
+                for (const auto& tr : trackList.tracks) {
+                    std::string artistIds = "";
+                    for (const auto& art : tr.artists) {
+                        artistIds += art.id + ";;";
+                    }
+                    results.push_back({tr.name, tr.id, tr.album.id, artistIds, tr.disc_number, tr.duration_ms, tr.is_explicit, tr.preview_url.value_or(""), tr.track_number});
+                }
+            } catch (...) {}
+        }
+        return results;
+    }
 
-    // MightBeSimilar
-    static void SetMightBeSimilar(const std::string& songId1, const std::string& songId2) { DatabaseWorker::SetMightBeSimilar(songId1, songId2); }
-    static void RemoveMightBeSimilar(const std::string& songId1, const std::string& songId2) { DatabaseWorker::RemoveMightBeSimilar(songId1, songId2); }
-    static std::vector<std::pair<std::string, std::string>> GetAllMightBeSimilar() { return DatabaseWorker::GetAllMightBeSimilar(); }
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string>> GetArtistDataBatch(const std::vector<std::string>& ids) {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> results;
+        
+        // Spotify API supports batching up to 50 artists
+        for (size_t i = 0; i < ids.size(); i += 50) {
+            std::vector<std::string> chunk;
+            for (size_t j = i; j < i + 50 && j < ids.size(); j++) {
+                chunk.push_back(ids[j]);
+            }
+            try {
+                auto artistList = client->artist().getArtists(chunk);
+                for (const auto& art : artistList.artists) {
+                    std::string imageUrl = art.images.empty() ? "" : art.images[0].url;
+                    std::string genres = "";
+                    for (const auto& g : art.genres) {
+                        genres += g + ";;";
+                    }
+                    
+                    std::string artId = art.uri;
+                    auto pos = artId.find_last_of(':');
+                    if (pos != std::string::npos) {
+                        artId = artId.substr(pos + 1);
+                    }
 
+                    results.push_back({artId, art.name, imageUrl, genres});
+                }
+            } catch (...) {}
+        }
+        return results;
+    }
+"""
+
+if "GetLikedSongs" not in sw:
+    sw = sw.replace("static void AddTracksToPlaylist", new_methods + "\n    static void AddTracksToPlaylist")
+    with open('src/SpotifyWorker.hpp', 'w') as f:
+        f.write(sw)
+
+
+# 2. Update DataCoordinator.hpp
+with open('src/DataCoordinator.hpp', 'r') as f:
+    dc = f.read()
+
+sync_methods = """
     // --- Synchronization Logic ---
     static void SlowSync() {
         Sync();
@@ -158,7 +206,7 @@ private:
                 }
             }
         }
-        std::cout << "Got Playlists\n";
+        std::cout << "Got Playlists\\n";
     }
 
     static void SyncAlbums() {
@@ -195,7 +243,7 @@ private:
                 }
             }
         }
-        std::cout << "Got Albums\n";
+        std::cout << "Got Albums\\n";
     }
 
     static void SyncLikedSongs() {
@@ -215,7 +263,7 @@ private:
         }
         likedPl.TrackIDs = tIdsStr;
         SetPlaylist(likedPl);
-        std::cout << "Got Liked Songs\n";
+        std::cout << "Got Liked Songs\\n";
     }
 
     static void SyncTrackMetadata() {
@@ -262,7 +310,7 @@ private:
                 }
             }
         }
-        std::cout << "Got Track Metadata\n";
+        std::cout << "Got Track Metadata\\n";
     }
 
     static void SyncArtistMetadata() {
@@ -286,12 +334,12 @@ private:
                 SetArtist(art);
             }
         }
-        std::cout << "Got Artist Metadata\n";
+        std::cout << "Got Artist Metadata\\n";
     }
+"""
 
-};
-
-}
-
-#endif // DATA_COORDINATOR_HPP
+if "SyncPlaylists" not in dc:
+    dc = dc.replace("    static std::vector<std::pair<std::string, std::string>> GetAllMightBeSimilar() { return DatabaseWorker::GetAllMightBeSimilar(); }", "    static std::vector<std::pair<std::string, std::string>> GetAllMightBeSimilar() { return DatabaseWorker::GetAllMightBeSimilar(); }\n" + sync_methods)
+    with open('src/DataCoordinator.hpp', 'w') as f:
+        f.write(dc)
 
