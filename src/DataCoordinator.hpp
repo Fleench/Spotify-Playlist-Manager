@@ -153,11 +153,7 @@ private:
                 SetPlaylist(pl);
                 auto tIds = Helpers::Split(pl.TrackIDs, ";;");
                 for (auto& tid : tIds) {
-                    if (!tid.empty()) {
-                        Variables::Track t;
-                        t.Id = tid;
-                        SetTrack(t);
-                    }
+                    DatabaseWorker::EnsureTrackExists(tid);
                 }
             }
         }
@@ -183,14 +179,7 @@ private:
 
             auto tIds = Helpers::Split(alb.TrackIDs, ";;");
             for (auto& tid : tIds) {
-                if (!tid.empty()) {
-                    auto existingTrack = DatabaseWorker::GetTrack(tid);
-                    if (!existingTrack) {
-                        Variables::Track t;
-                        t.Id = tid;
-                        SetTrack(t);
-                    }
-                }
+                DatabaseWorker::EnsureTrackExists(tid);
             }
             
             auto artIds = Helpers::Split(alb.ArtistIDs, ";;");
@@ -220,9 +209,7 @@ private:
         for (auto& song : liked) {
             std::string tid = std::get<0>(song);
             tIdsStr += tid + ";;";
-            Variables::Track t;
-            t.Id = tid;
-            SetTrack(t);
+            DatabaseWorker::EnsureTrackExists(tid);
         }
         likedPl.TrackIDs = tIdsStr;
         SetPlaylist(likedPl);
@@ -328,4 +315,3 @@ private:
 }
 
 #endif // DATA_COORDINATOR_HPP
-

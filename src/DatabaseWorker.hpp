@@ -33,6 +33,7 @@ public:
 
     // Tracks
     static void SetTrack(const Variables::Track& track);
+    static void EnsureTrackExists(const std::string& id);
     static std::optional<Variables::Track> GetTrack(const std::string& id);
     static void RemoveTrack(const std::string& id);
     static std::vector<Variables::Track> GetAllTracks();
