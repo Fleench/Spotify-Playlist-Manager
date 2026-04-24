@@ -276,7 +276,13 @@ public:
                 if (!page.next.has_value() || page.items.empty()) break;
                 offset += page.items.size();
             }
-        } catch (...) {}
+        } catch (const Spotify::APIException& e) {
+            std::cerr << "GetLikedSongs API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "GetLikedSongs std::exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "GetLikedSongs unknown exception" << std::endl;
+        }
         return results;
     }
 
@@ -298,7 +304,13 @@ public:
                 if (!page.next.has_value() || page.items.empty()) break;
                 offset += page.items.size();
             }
-        } catch (...) {}
+        } catch (const Spotify::APIException& e) {
+            std::cerr << "GetUserAlbums API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "GetUserAlbums std::exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "GetUserAlbums unknown exception" << std::endl;
+        }
         return results;
     }
 
