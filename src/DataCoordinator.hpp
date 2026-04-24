@@ -44,6 +44,7 @@ public:
         DatabaseWorker::SetAlbum(album);
     }
     static void RemoveAlbum(const std::string& id) { DatabaseWorker::RemoveAlbum(id); }
+    static void EnsureAlbumExists(const std::string& id) { DatabaseWorker::EnsureAlbumExists(id); }
     static std::optional<Variables::Album> GetAlbum(const std::string& id) { return DatabaseWorker::GetAlbum(id); }
     static std::vector<Variables::Album> GetAllAlbums() { return DatabaseWorker::GetAllAlbums(); }
 
@@ -69,6 +70,7 @@ public:
         DatabaseWorker::SetArtist(artist);
     }
     static void RemoveArtist(const std::string& id) { DatabaseWorker::RemoveArtist(id); }
+    static void EnsureArtistExists(const std::string& id) { DatabaseWorker::EnsureArtistExists(id); }
     static std::optional<Variables::Artist> GetArtist(const std::string& id) { return DatabaseWorker::GetArtist(id); }
     static std::vector<Variables::Artist> GetAllArtists() { return DatabaseWorker::GetAllArtists(); }
 
@@ -185,12 +187,7 @@ private:
             auto artIds = Helpers::Split(alb.ArtistIDs, ";;");
             for (auto& aid : artIds) {
                 if (!aid.empty()) {
-                    auto existingArt = DatabaseWorker::GetArtist(aid);
-                    if (!existingArt) {
-                        Variables::Artist a;
-                        a.Id = aid;
-                        SetArtist(a);
-                    }
+                    EnsureArtistExists(aid);
                 }
             }
         }
@@ -263,17 +260,19 @@ private:
                 SetTrack(t);
 
                 if (!t.AlbumId.empty()) {
-                    Variables::Album a;
-                    a.Id = t.AlbumId;
-                    SetAlbum(a);
+                    auto existingAlbum = DatabaseWorker::GetAlbum(t.AlbumId);
+                    if (!existingAlbum) {
+                        EnsureAlbumExists(t.AlbumId);
+                    }
                 }
 
                 auto artIds = Helpers::Split(t.ArtistIds, ";;");
                 for (auto& aid : artIds) {
                     if (!aid.empty()) {
-                        Variables::Artist art;
-                        art.Id = aid;
-                        SetArtist(art);
+                        auto existingArtist = DatabaseWorker::GetArtist(aid);
+                        if (!existingArtist) {
+                            EnsureArtistExists(aid);
+                        }
                     }
                 }
             }
