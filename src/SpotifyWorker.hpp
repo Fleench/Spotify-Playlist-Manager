@@ -63,7 +63,8 @@ public:
             Spotify::Scope::PlaylistReadCollaborative,
             Spotify::Scope::PlaylistModifyPrivate,
             Spotify::Scope::PlaylistModifyPublic,
-            Spotify::Scope::UserLibraryRead
+            Spotify::Scope::UserLibraryRead,
+            Spotify::Scope::UserFollowRead
         });
         
         Spotify::AuthServer::openBrowser(url);

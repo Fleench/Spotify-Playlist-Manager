@@ -42,7 +42,7 @@ std::map<std::string, std::string> loadEnv(const std::string& filepath) {
 }
 
 int main(int argc, char** argv) {
-    const std::string requiredSpotifyScopeVersion = "2";
+    const std::string requiredSpotifyScopeVersion = "3";
 
     Variables::Init();
     DatabaseWorker::Init();
