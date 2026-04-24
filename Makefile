@@ -17,12 +17,8 @@ LIB_PATHS = -L/home/glenn/CODE/CPP/lib/spotify/SpotifyCPP/build
 LDFLAGS = $(LIB_PATHS) `pkg-config --libs libadwaita-1 gtk4` -lSpotifyCPP -lcurl -lsqlite3
 
 # ---------------------------------------------------------
-# Automatically grab EVERY .cpp file inside the src/ folder
-SRCS = $(wildcard src/*.cpp)
-
-# (If your main.cpp is sitting in the root folder instead of src/, 
-# comment out the line above and use this line below instead:)
-# SRCS = main.cpp $(wildcard src/*.cpp)
+# Automatically grab EVERY .cpp file inside the src/ folder (recursively)
+SRCS = $(shell find src -name "*.cpp")
 # ---------------------------------------------------------
 
 OBJS = $(SRCS:.cpp=.o)

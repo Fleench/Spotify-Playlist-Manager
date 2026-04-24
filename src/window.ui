@@ -25,6 +25,14 @@
                 </style>
               </object>
             </child>
+            <child>
+              <object class="GtkLabel" id="log_label">
+                <property name="label">Ready</property>
+                <property name="margin-top">24</property>
+                <property name="wrap">true</property>
+                <property name="justify">center</property>
+              </object>
+            </child>
           </object>
         </property>
       </object>

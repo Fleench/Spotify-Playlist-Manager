@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="AdwApplicationWindow" id="browse_window">
+    <property name="default-width">900</property>
+    <property name="default-height">600</property>
+    <property name="title">Library Browser</property>
+    <property name="content">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="title-widget">
+              <object class="AdwViewSwitcher">
+                <property name="stack">view_stack</property>
+                <property name="policy">wide</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        <property name="content">
+          <object class="AdwViewStack" id="view_stack">
+            <!-- Page 1: Playlists -->
+            <child>
+              <object class="AdwViewStackPage">
+                <property name="name">playlists</property>
+                <property name="title">Playlists</property>
+                <property name="icon-name">view-list-symbolic</property>
+                <property name="child">
+                  <object class="GtkPaned">
+                    <property name="shrink-start-child">false</property>
+                    <property name="shrink-end-child">false</property>
+                    <property name="position">250</property>
+                    <child type="start">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="playlist_list">
+                            <property name="selection-mode">single</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="playlist_track_list">
+                            <property name="selection-mode">none</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <!-- Page 2: Albums -->
+            <child>
+              <object class="AdwViewStackPage">
+                <property name="name">albums</property>
+                <property name="title">Albums</property>
+                <property name="icon-name">media-optical-cd-audio-symbolic</property>
+                <property name="child">
+                  <object class="GtkPaned">
+                    <property name="shrink-start-child">false</property>
+                    <property name="shrink-end-child">false</property>
+                    <property name="position">250</property>
+                    <child type="start">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="album_list">
+                            <property name="selection-mode">single</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="album_track_list">
+                            <property name="selection-mode">none</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <!-- Page 3: Artists -->
+            <child>
+              <object class="AdwViewStackPage">
+                <property name="name">artists</property>
+                <property name="title">Artists</property>
+                <property name="icon-name">system-users-symbolic</property>
+                <property name="child">
+                  <object class="GtkPaned">
+                    <property name="shrink-start-child">false</property>
+                    <property name="shrink-end-child">false</property>
+                    <property name="position">250</property>
+                    <child type="start">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="artist_list">
+                            <property name="selection-mode">single</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkListBox" id="artist_track_list">
+                            <property name="selection-mode">none</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <!-- Page 4: All Songs -->
+            <child>
+              <object class="AdwViewStackPage">
+                <property name="name">songs</property>
+                <property name="title">All Songs</property>
+                <property name="icon-name">audio-x-generic-symbolic</property>
+                <property name="child">
+                  <object class="GtkScrolledWindow">
+                    <child>
+                      <object class="GtkListBox" id="all_songs_list">
+                        <property name="selection-mode">none</property>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </object>
+</interface>

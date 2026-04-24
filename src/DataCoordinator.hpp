@@ -3,6 +3,7 @@
 
 #include "Variables.hpp"
 #include "DatabaseWorker.hpp"
+#include "Logger.hpp"
 #include "SpotifyWorker.hpp"
 #include "CacheWorker.hpp"
 #include "Helpers.hpp"
@@ -131,6 +132,7 @@ private:
     }
 
     static void SyncPlaylists() {
+        Logger::Log("Fetching Playlists...", LogType::Info);
         auto playlists = SpotifyWorker::GetUserPlaylists();
         for (auto& summary : playlists) {
             std::string pId = std::get<0>(summary);
@@ -162,6 +164,7 @@ private:
     }
 
     static void SyncAlbums() {
+        Logger::Log("Fetching Albums...", LogType::Info);
         auto albums = SpotifyWorker::GetUserAlbums();
         for (auto& summary : albums) {
             std::string aId = std::get<0>(summary);
@@ -170,7 +173,7 @@ private:
 
             Variables::Album alb;
             alb.Id = aId;
-            alb.Name = std::get<0>(data);
+            alb.Name = std::get<0>(data).empty() ? std::get<1>(summary) : std::get<0>(data);
             alb.ImageURL = std::get<1>(data);
             alb.TrackIDs = std::get<3>(data);
             alb.ArtistIDs = std::get<4>(data);
@@ -180,18 +183,24 @@ private:
             auto tIds = Helpers::Split(alb.TrackIDs, ";;");
             for (auto& tid : tIds) {
                 if (!tid.empty()) {
-                    Variables::Track t;
-                    t.Id = tid;
-                    SetTrack(t);
+                    auto existingTrack = DatabaseWorker::GetTrack(tid);
+                    if (!existingTrack) {
+                        Variables::Track t;
+                        t.Id = tid;
+                        SetTrack(t);
+                    }
                 }
             }
             
             auto artIds = Helpers::Split(alb.ArtistIDs, ";;");
             for (auto& aid : artIds) {
                 if (!aid.empty()) {
-                    Variables::Artist a;
-                    a.Id = aid;
-                    SetArtist(a);
+                    auto existingArt = DatabaseWorker::GetArtist(aid);
+                    if (!existingArt) {
+                        Variables::Artist a;
+                        a.Id = aid;
+                        SetArtist(a);
+                    }
                 }
             }
         }
@@ -199,6 +208,7 @@ private:
     }
 
     static void SyncLikedSongs() {
+        Logger::Log("Fetching Liked Songs...", LogType::Info);
         auto liked = SpotifyWorker::GetLikedSongs();
         Variables::PlayList likedPl;
         likedPl.Id = "liked_songs";
@@ -219,6 +229,7 @@ private:
     }
 
     static void SyncTrackMetadata() {
+        Logger::Log("Fetching Track Metadata...", LogType::Info);
         auto tracks = DatabaseWorker::GetAllTracks();
         std::vector<std::string> idsToFetch;
         for (auto& t : tracks) {
@@ -242,7 +253,10 @@ private:
                 t.TrackNumber = std::get<8>(r);
 
                 auto existing = DatabaseWorker::GetTrack(t.Id);
-                if (existing) t.SongID = existing->SongID;
+                if (existing) {
+                    t.SongID = existing->SongID;
+                    if (t.Name.empty()) t.Name = existing->Name;
+                }
 
                 SetTrack(t);
 
@@ -266,6 +280,7 @@ private:
     }
 
     static void SyncArtistMetadata() {
+        Logger::Log("Fetching Artist Metadata...", LogType::Info);
         auto artists = DatabaseWorker::GetAllArtists();
         std::vector<std::string> idsToFetch;
         for (auto& a : artists) {
@@ -274,19 +289,23 @@ private:
             }
         }
 
+        std::cout << "DEBUG: " << idsToFetch.size() << " artists to fetch\n";
+
         if (!idsToFetch.empty()) {
             auto results = SpotifyWorker::GetArtistDataBatch(idsToFetch);
+            std::cout << "DEBUG: " << results.size() << " artists fetched\n";
             for (auto& r : results) {
                 Variables::Artist art;
                 art.Id = std::get<0>(r);
-                art.Name = std::get<1>(r);
+                art.Name = std::get<1>(r).empty() ? "Unknown Artist" : std::get<1>(r);
                 art.ImageURL = std::get<2>(r);
                 art.Genres = std::get<3>(r);
 
+                std::cout << "DEBUG: Saving Artist: " << art.Name << " (ID: " << art.Id << ")\n";
                 SetArtist(art);
             }
         }
-        std::cout << "Got Artist Metadata\n";
+        Logger::Log("Got Artist Metadata", LogType::Success);
     }
 
 };

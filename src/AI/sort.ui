@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="AdwApplicationWindow" id="sort_window">
+    <property name="default-width">600</property>
+    <property name="default-height">700</property>
+    <property name="title">Playlist Sorter</property>
+    <property name="content">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <child type="end">
+              <object class="GtkButton" id="next_button">
+                <property name="label">Next Song</property>
+                <property name="css-classes">suggested-action</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <property name="content">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">18</property>
+            <property name="margin-top">18</property>
+            <property name="margin-bottom">18</property>
+            <property name="margin-start">18</property>
+            <property name="margin-end">18</property>
+            <child>
+              <object class="AdwStatusPage" id="song_status">
+                <property name="title">Loading...</property>
+                <property name="description">Artist Name</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">12</property>
+                    <child>
+                      <object class="GtkImage" id="song_image">
+                        <property name="pixel-size">200</property>
+                        <property name="icon-name">audio-x-generic-symbolic</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="play_button">
+                        <property name="label">Play on Spotify</property>
+                        <property name="halign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Add to Playlists:</property>
+                <property name="halign">start</property>
+                <property name="css-classes">heading</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkListBox" id="sortable_playlist_list">
+                    <property name="selection-mode">none</property>
+                    <property name="css-classes">boxed-list</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </object>
+</interface>

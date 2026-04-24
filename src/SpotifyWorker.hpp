@@ -46,7 +46,13 @@ public:
             accessToken = auth->getAccessToken();
             try {
                 refreshToken = auth->getRefreshToken();
-            } catch (...) {}
+            } catch (const Spotify::APIException& e) {
+                std::cerr << "GetArtistDataBatch API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << "GetArtistDataBatch std::exception: " << e.what() << std::endl;
+            } catch (...) {
+                std::cerr << "GetArtistDataBatch unknown exception" << std::endl;
+            }
             return {accessToken, refreshToken};
         }
         
@@ -279,7 +285,13 @@ public:
                     }
                     results.push_back({tr.name, tr.id, tr.album.id, artistIds, tr.disc_number, tr.duration_ms, tr.is_explicit, tr.preview_url.value_or(""), tr.track_number});
                 }
-            } catch (...) {}
+            } catch (const Spotify::APIException& e) {
+                std::cerr << "GetArtistDataBatch API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << "GetArtistDataBatch std::exception: " << e.what() << std::endl;
+            } catch (...) {
+                std::cerr << "GetArtistDataBatch unknown exception" << std::endl;
+            }
         }
         return results;
     }
@@ -288,10 +300,10 @@ public:
         if (!client) return {};
         std::vector<std::tuple<std::string, std::string, std::string, std::string>> results;
         
-        // Spotify API supports batching up to 50 artists
-        for (size_t i = 0; i < ids.size(); i += 50) {
+        // Spotify API supports batching up to 20 artists
+        for (size_t i = 0; i < ids.size(); i += 20) {
             std::vector<std::string> chunk;
-            for (size_t j = i; j < i + 50 && j < ids.size(); j++) {
+            for (size_t j = i; j < i + 20 && j < ids.size(); j++) {
                 chunk.push_back(ids[j]);
             }
             try {
@@ -311,7 +323,13 @@ public:
 
                     results.emplace_back(artId, art.name, imageUrl, genres);
                 }
-            } catch (...) {}
+            } catch (const Spotify::APIException& e) {
+                std::cerr << "GetArtistDataBatch API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << "GetArtistDataBatch std::exception: " << e.what() << std::endl;
+            } catch (...) {
+                std::cerr << "GetArtistDataBatch unknown exception" << std::endl;
+            }
         }
         return results;
     }
@@ -321,6 +339,31 @@ public:
         try {
             client->playlist().addItemsToPlaylist(playlistId, trackIds);
         } catch (...) {}
+    }
+
+    static bool HasActiveDevice() {
+        if (!client) return false;
+        try {
+            auto devices = client->player().getAvailableDevices();
+            for (const auto& d : devices.devices) {
+                if (d.is_active) return true;
+            }
+        } catch (...) {}
+        return false;
+    }
+
+    static bool PlayTrack(const std::string& trackId) {
+        if (!client) return false;
+        try {
+            if (!HasActiveDevice()) return false;
+            Spotify::StartPlaybackProperties props;
+            props.uris = std::vector<std::string>{ "spotify:track:" + trackId };
+            props.position_ms = 0;
+            client->player().startPlayback(std::nullopt, props);
+            return true;
+        } catch (...) {
+            return false;
+        }
     }
 };
 

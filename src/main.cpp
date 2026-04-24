@@ -10,6 +10,8 @@
 #include "DataCoordinator.hpp"
 #include "Helpers.hpp"
 #include "MainWindow.hpp"
+#include "AI/BrowseView.hpp"
+#include "AI/SortView.hpp"
 
 using namespace SpotifyPlaylistManager;
 
@@ -81,8 +83,34 @@ int main(int argc, char** argv) {
     }
 
     // Launch GTK/Adwaita Application
-    AdwApplication* app = adw_application_new("com.example.SpotifyPlaylistManager", G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(MainWindow::Activate), NULL);
+    AdwApplication* app = adw_application_new("com.example.SpotifyPlaylistManager", G_APPLICATION_HANDLES_COMMAND_LINE);
+    
+    // We need to handle the command-line signal to prevent GApplication from complaining about unknown options
+    g_signal_connect(app, "command-line", G_CALLBACK(+[](GApplication* application, GApplicationCommandLine* cmdline, gpointer user_data) -> int {
+        g_application_activate(application);
+        return 0;
+    }), NULL);
+
+    bool browse_mode = false;
+    bool sort_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "browse") {
+            browse_mode = true;
+            break;
+        }
+        if (std::string(argv[i]) == "sort") {
+            sort_mode = true;
+            break;
+        }
+    }
+
+    if (browse_mode) {
+        g_signal_connect(app, "activate", G_CALLBACK(BrowseView::Activate), NULL);
+    } else if (sort_mode) {
+        g_signal_connect(app, "activate", G_CALLBACK(SortView::Activate), NULL);
+    } else {
+        g_signal_connect(app, "activate", G_CALLBACK(MainWindow::Activate), NULL);
+    }
 
     int status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
