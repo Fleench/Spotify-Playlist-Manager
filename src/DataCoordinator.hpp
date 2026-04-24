@@ -91,6 +91,7 @@ public:
         SyncPlaylists();
         SyncAlbums();
         SyncLikedSongs();
+        SyncFollowedArtists();
         SyncTrackMetadata();
         SyncArtistMetadata();
     }
@@ -226,6 +227,20 @@ private:
         likedPl.TrackIDs = tIdsStr;
         SetPlaylist(likedPl);
         std::cout << "Got Liked Songs\n";
+    }
+
+    static void SyncFollowedArtists() {
+        Logger::Log("Fetching Followed Artists...", LogType::Info);
+        auto artists = SpotifyWorker::GetFollowedArtists();
+        for (auto& r : artists) {
+            Variables::Artist art;
+            art.Id = std::get<0>(r);
+            art.Name = std::get<1>(r).empty() ? "Unknown Artist" : std::get<1>(r);
+            art.ImageURL = std::get<2>(r);
+            art.Genres = std::get<3>(r);
+            SetArtist(art);
+        }
+        std::cout << "Got Followed Artists\n";
     }
 
     static void SyncTrackMetadata() {

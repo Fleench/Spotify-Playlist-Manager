@@ -82,6 +82,27 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    bool browse_mode = false;
+    bool sort_mode = false;
+    bool sync_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "browse") {
+            browse_mode = true;
+        } else if (arg == "sort") {
+            sort_mode = true;
+        } else if (arg == "sync") {
+            sync_mode = true;
+        }
+    }
+
+    if (sync_mode) {
+        std::cout << "Starting CLI Sync..." << std::endl;
+        DataCoordinator::Sync();
+        std::cout << "CLI Sync complete." << std::endl;
+        return 0;
+    }
+
     // Launch GTK/Adwaita Application
     AdwApplication* app = adw_application_new("com.example.SpotifyPlaylistManager", G_APPLICATION_HANDLES_COMMAND_LINE);
     
@@ -90,19 +111,6 @@ int main(int argc, char** argv) {
         g_application_activate(application);
         return 0;
     }), NULL);
-
-    bool browse_mode = false;
-    bool sort_mode = false;
-    for (int i = 1; i < argc; ++i) {
-        if (std::string(argv[i]) == "browse") {
-            browse_mode = true;
-            break;
-        }
-        if (std::string(argv[i]) == "sort") {
-            sort_mode = true;
-            break;
-        }
-    }
 
     if (browse_mode) {
         g_signal_connect(app, "activate", G_CALLBACK(BrowseView::Activate), NULL);

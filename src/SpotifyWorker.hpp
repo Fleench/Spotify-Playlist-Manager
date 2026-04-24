@@ -82,9 +82,15 @@ public:
         if (!client) return {};
         std::vector<std::tuple<std::string, std::string, int>> results;
         try {
-            auto page = client->playlist().getCurrentUsersPlaylists(50);
-            for (const auto& pl : page.items) {
-                results.push_back({pl.id, pl.name, pl.tracks.total});
+            uint32_t offset = 0;
+            uint32_t limit = 50;
+            while (true) {
+                auto page = client->playlist().getCurrentUsersPlaylists(limit, offset);
+                for (const auto& pl : page.items) {
+                    results.push_back({pl.id, pl.name, pl.tracks.total});
+                }
+                if (!page.next.has_value() || page.items.empty()) break;
+                offset += page.items.size();
             }
         } catch (const Spotify::APIException& e) {
             std::cerr << "GetUserPlaylists Spotify::APIException: " << e.what() << " - Reason: " << e.reason() << std::endl;
@@ -106,14 +112,36 @@ public:
             auto pl = client->playlist().getPlaylist(id);
             std::string imageUrl = pl.images.empty() ? "" : pl.images[0].url;
             
-            std::string trackIds = "";
-            for (const auto& item : pl.tracks.items) {
-                if (auto trackPtr = std::get_if<std::shared_ptr<Spotify::TrackObject>>(&item.track)) {
-                    if (*trackPtr) trackIds += (*trackPtr)->id + ";;";
+            std::vector<std::string> allTrackIds;
+            auto processItems = [&](const std::vector<Spotify::PlaylistTrackObject>& items) {
+                for (const auto& item : items) {
+                    if (auto trackPtr = std::get_if<std::shared_ptr<Spotify::TrackObject>>(&item.track)) {
+                        if (*trackPtr) allTrackIds.push_back((*trackPtr)->id);
+                    }
                 }
+            };
+
+            processItems(pl.tracks.items);
+
+            uint32_t offset = pl.tracks.items.size();
+            uint32_t limit = 100;
+            uint32_t total = pl.tracks.total;
+
+            while (offset < total) {
+                auto page = client->playlist().getPlaylistItems(id, std::nullopt, std::nullopt, limit, offset);
+                processItems(page.items);
+                if (!page.next.has_value() || page.items.empty()) break;
+                offset += page.items.size();
             }
-            if (!trackIds.empty()) trackIds.pop_back();
-            if (!trackIds.empty()) trackIds.pop_back();
+
+            std::string trackIds = "";
+            for (const auto& tid : allTrackIds) {
+                trackIds += tid + ";;";
+            }
+            if (!trackIds.empty()) {
+                trackIds.pop_back();
+                trackIds.pop_back();
+            }
 
             return {pl.name, imageUrl, pl.id, pl.description.value_or(""), pl.snapshot_id, trackIds};
         } catch (const Spotify::APIException& e) {
@@ -134,9 +162,27 @@ public:
             auto al = client->album().getAlbum(id);
             std::string imageUrl = al.images.empty() ? "" : al.images[0].url;
             
-            std::string trackIds = "";
+            std::vector<std::string> allTrackIds;
             for (const auto& item : al.tracks.items) {
-                trackIds += item.id + ";;";
+                allTrackIds.push_back(item.id);
+            }
+
+            uint32_t offset = al.tracks.items.size();
+            uint32_t limit = 50;
+            uint32_t total = al.tracks.total;
+
+            while (offset < total) {
+                auto page = client->album().getAlbumTracks(id, std::nullopt, limit, offset);
+                for (const auto& item : page.items) {
+                    allTrackIds.push_back(item.id);
+                }
+                if (!page.next.has_value() || page.items.empty()) break;
+                offset += page.items.size();
+            }
+            
+            std::string trackIds = "";
+            for (const auto& tid : allTrackIds) {
+                trackIds += tid + ";;";
             }
             
             std::string artistIds = "";
@@ -215,13 +261,19 @@ public:
         if (!client) return {};
         std::vector<std::tuple<std::string, std::string, std::string>> results;
         try {
-            auto page = client->track().getUserSavedTracks();
-            for (const auto& item : page.items) {
-                std::string artistIds = "";
-                for (const auto& art : item.track.artists) {
-                    artistIds += art.id + ";;";
+            uint32_t offset = 0;
+            uint32_t limit = 50;
+            while (true) {
+                auto page = client->track().getUserSavedTracks(std::nullopt, limit, offset);
+                for (const auto& item : page.items) {
+                    std::string artistIds = "";
+                    for (const auto& art : item.track.artists) {
+                        artistIds += art.id + ";;";
+                    }
+                    results.push_back({item.track.id, item.track.name, artistIds});
                 }
-                results.push_back({item.track.id, item.track.name, artistIds});
+                if (!page.next.has_value() || page.items.empty()) break;
+                offset += page.items.size();
             }
         } catch (...) {}
         return results;
@@ -231,15 +283,57 @@ public:
         if (!client) return {};
         std::vector<std::tuple<std::string, std::string, int, std::string>> results;
         try {
-            auto page = client->album().getUsersSavedAlbums();
-            for (const auto& item : page.items) {
-                std::string artistIds = "";
-                for (const auto& art : item.album.artists) {
-                    artistIds += art.id + ";;";
+            uint32_t offset = 0;
+            uint32_t limit = 50;
+            while (true) {
+                auto page = client->album().getUsersSavedAlbums(limit, offset);
+                for (const auto& item : page.items) {
+                    std::string artistIds = "";
+                    for (const auto& art : item.album.artists) {
+                        artistIds += art.id + ";;";
+                    }
+                    results.emplace_back(item.album.id, item.album.name, item.album.total_tracks, artistIds);
                 }
-                results.emplace_back(item.album.id, item.album.name, item.album.total_tracks, artistIds);
+                if (!page.next.has_value() || page.items.empty()) break;
+                offset += page.items.size();
             }
         } catch (...) {}
+        return results;
+    }
+
+    static std::vector<std::tuple<std::string, std::string, std::string, std::string>> GetFollowedArtists() {
+        if (!client) return {};
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> results;
+        try {
+            std::optional<std::string> after = std::nullopt;
+            int limit = 50;
+            while (true) {
+                auto page = client->users().getFollowedArtists("artist", after, limit);
+                for (const auto& art : page.items) {
+                    std::string imageUrl = art.images.empty() ? "" : art.images[0].url;
+                    std::string genres = "";
+                    for (const auto& g : art.genres) {
+                        genres += g + ";;";
+                    }
+                    
+                    std::string artId = art.uri;
+                    auto pos = artId.find_last_of(':');
+                    if (pos != std::string::npos) {
+                        artId = artId.substr(pos + 1);
+                    }
+                    
+                    results.emplace_back(artId, art.name, imageUrl, genres);
+                }
+                if (!page.next.has_value() || !page.cursors.has_value() || page.cursors->after.empty()) break;
+                after = page.cursors->after;
+            }
+        } catch (const Spotify::APIException& e) {
+            std::cerr << "GetFollowedArtists API Exception: " << e.what() << " - Reason: " << e.reason() << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "GetFollowedArtists std::exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "GetFollowedArtists unknown exception" << std::endl;
+        }
         return results;
     }
 
