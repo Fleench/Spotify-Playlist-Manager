@@ -204,6 +204,23 @@ void DatabaseWorker::SetAlbum(const Variables::Album& album) {
     sqlite3_close(db);
 }
 
+void DatabaseWorker::EnsureAlbumExists(const std::string& id) {
+    if (id.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(dbMutex);
+    sqlite3* db;
+    sqlite3_open(Variables::DatabasePath.c_str(), &db);
+    sqlite3_stmt* stmt;
+    const char* sql = "INSERT OR IGNORE INTO Albums (Id) VALUES (?);";
+    sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
 std::optional<Variables::Album> DatabaseWorker::GetAlbum(const std::string& id) {
     std::lock_guard<std::mutex> lock(dbMutex);
     sqlite3* db;
@@ -404,6 +421,23 @@ void DatabaseWorker::SetArtist(const Variables::Artist& artist) {
     sqlite3_bind_text(stmt, 3, artist.ImageURL.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 4, artist.ImagePath.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 5, artist.Genres.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
+void DatabaseWorker::EnsureArtistExists(const std::string& id) {
+    if (id.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(dbMutex);
+    sqlite3* db;
+    sqlite3_open(Variables::DatabasePath.c_str(), &db);
+    sqlite3_stmt* stmt;
+    const char* sql = "INSERT OR IGNORE INTO Artists (Id) VALUES (?);";
+    sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
     sqlite3_close(db);

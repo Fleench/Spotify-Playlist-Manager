@@ -27,6 +27,7 @@ public:
 
     // Albums
     static void SetAlbum(const Variables::Album& album);
+    static void EnsureAlbumExists(const std::string& id);
     static std::optional<Variables::Album> GetAlbum(const std::string& id);
     static void RemoveAlbum(const std::string& id);
     static std::vector<Variables::Album> GetAllAlbums();
@@ -41,6 +42,7 @@ public:
 
     // Artists
     static void SetArtist(const Variables::Artist& artist);
+    static void EnsureArtistExists(const std::string& id);
     static std::optional<Variables::Artist> GetArtist(const std::string& id);
     static void RemoveArtist(const std::string& id);
     static std::vector<Variables::Artist> GetAllArtists();
