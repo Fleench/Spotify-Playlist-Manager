@@ -42,6 +42,8 @@ std::map<std::string, std::string> loadEnv(const std::string& filepath) {
 }
 
 int main(int argc, char** argv) {
+    const std::string requiredSpotifyScopeVersion = "2";
+
     Variables::Init();
     DatabaseWorker::Init();
 
@@ -66,6 +68,17 @@ int main(int argc, char** argv) {
         if (dbRt) refreshToken = dbRt.value();
     }
 
+    auto storedScopeVersion = DataCoordinator::GetSetting(Variables::Settings::SW_AuthScopeVersion);
+    if (!storedScopeVersion || storedScopeVersion.value() != requiredSpotifyScopeVersion) {
+        if (!refreshToken.empty() && refreshToken != "your_refresh_token_here_optional") {
+            std::cout << "Spotify scope permissions changed. Forcing re-authentication to grant new scopes." << std::endl;
+        }
+        accessToken.clear();
+        refreshToken.clear();
+        DataCoordinator::RemoveSetting(Variables::Settings::SW_AccessToken);
+        DataCoordinator::RemoveSetting(Variables::Settings::SW_RefreshToken);
+    }
+
     SpotifyWorker::Init(clientId, clientSecret, accessToken, refreshToken);
     
     std::cout << "Authenticating..." << std::endl;
@@ -77,6 +90,7 @@ int main(int argc, char** argv) {
         DataCoordinator::SetSetting(Variables::Settings::SW_ClientSecret, clientSecret);
         if (!newAt.empty()) DataCoordinator::SetSetting(Variables::Settings::SW_AccessToken, newAt);
         if (!newRt.empty()) DataCoordinator::SetSetting(Variables::Settings::SW_RefreshToken, newRt);
+        DataCoordinator::SetSetting(Variables::Settings::SW_AuthScopeVersion, requiredSpotifyScopeVersion);
     } catch (const std::exception& e) {
         std::cerr << "Auth failed: " << e.what() << std::endl;
         return 1;
