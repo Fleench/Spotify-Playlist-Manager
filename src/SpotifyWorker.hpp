@@ -60,6 +60,7 @@ public:
             Spotify::Scope::UserReadPlaybackState, 
             Spotify::Scope::UserModifyPlaybackState,
             Spotify::Scope::PlaylistReadPrivate,
+            Spotify::Scope::PlaylistReadCollaborative,
             Spotify::Scope::PlaylistModifyPrivate,
             Spotify::Scope::PlaylistModifyPublic,
             Spotify::Scope::UserLibraryRead
@@ -464,4 +465,3 @@ public:
 }
 
 #endif // SPOTIFY_WORKER_HPP
-

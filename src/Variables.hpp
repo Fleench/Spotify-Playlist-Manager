@@ -129,6 +129,7 @@ namespace Variables {
         const std::string SW_RefreshToken = "SW_RefreshToken";
         const std::string SW_ClientToken = "SW_ClientToken";
         const std::string SW_ClientSecret = "SW_ClientSecret";
+        const std::string SW_AuthScopeVersion = "SW_AuthScopeVersion";
     }
 }
 
